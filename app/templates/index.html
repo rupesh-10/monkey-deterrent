@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Monkey Detector</title>
+</head>
+<body>
+    <h1>Monkey Detection System</h1>
+    
+    <form method="POST" action="/api/set_source">
+        <label>
+            <input type="radio" name="source" value="webcam" checked> Webcam
+        </label>
+        <label>
+            <input type="radio" name="source" value="youtube"> YouTube
+        </label>
+        <br><br>
+        <input type="text" name="yt_url" placeholder="YouTube link (if selected)">
+        <br><br>
+        <button type="submit">Start Detection</button>
+    </form>
+
+    <hr>
+    <h2>Live Feed:</h2>
+    <img src="{{ url_for('video') }}" width="720">
+</body>
+</html>

@@ -1,0 +1,13 @@
+train: ./data/train/images
+val: ./data/valid/images
+test: ./data/test/images
+
+nc: 3
+names: ['0', 'Human', 'Monkey']
+
+roboflow:
+  workspace: rupesh-workspace
+  project: monkey-3npsq-kjvxl
+  version: 1
+  license: Private
+  url: https://universe.roboflow.com/rupesh-workspace/monkey-3npsq-kjvxl/dataset/1
