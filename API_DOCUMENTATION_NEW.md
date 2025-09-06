@@ -24,7 +24,7 @@ Returns server status to verify the API is running.
 ### 2. Webcam Control
 **POST /webcam**
 
-Start or stop the Raspberry Pi camera capture and processing.
+Start or stop the webcam capture.
 
 **Request Body:**
 ```json
@@ -39,8 +39,7 @@ Start or stop the Raspberry Pi camera capture and processing.
 ```json
 {
   "status": "webcam started",
-  "message": "Camera initialized successfully using Raspberry Pi Camera",
-  "source": "Raspberry Pi Camera"
+  "message": "Camera initialized successfully"
 }
 ```
 
@@ -54,18 +53,16 @@ Start or stop the Raspberry Pi camera capture and processing.
 *Error Examples:*
 ```json
 {
-  "error": "Cannot open Raspberry Pi camera or local webcam"
+  "error": "Cannot open camera"
 }
 ```
 
-**Note:** The system will try to connect to the Raspberry Pi camera first. If that fails, it will fall back to the local webcam.
-
-### 3. Video Stream (with Detection)
+### 3. Video Stream
 **GET /video**
 
-Returns an MJPEG video stream from Raspberry Pi camera with real-time monkey detection overlays.
+Returns an MJPEG video stream with real-time monkey detection overlays.
 
-**Requirements:** Camera must be started first using `/webcam` endpoint.
+**Requirements:** Webcam must be started first using `/webcam` endpoint.
 
 **Response:** Multipart JPEG stream (`multipart/x-mixed-replace; boundary=frame`)
 
@@ -73,15 +70,6 @@ Returns an MJPEG video stream from Raspberry Pi camera with real-time monkey det
 - `Cache-Control: no-cache, no-store, must-revalidate`
 - `Pragma: no-cache`
 - `Expires: 0`
-
-### 3.1. Direct Pi Video Stream
-**GET /pi-video**
-
-Returns direct MJPEG video stream from Raspberry Pi camera without detection overlays (faster, less processing).
-
-**Response:** Multipart JPEG stream (`multipart/x-mixed-replace; boundary=frame`)
-
-**Use case:** When you want raw video feed without AI processing overhead.
 
 ### 4. Detection Status
 **GET /detection**
@@ -93,15 +81,14 @@ Get the latest monkey detection result.
 {
   "detected": true,
   "confidence": 0.95,
-  "timestamp": 1693472347.123,
-  "image_path": "monkey_detected_20250831_143527.jpg"
+  "timestamp": 1693472347.123
 }
 ```
 
 ### 5. System Status
 **GET /status**
 
-Get comprehensive system status information including Raspberry Pi camera connectivity.
+Get comprehensive system status information.
 
 **Response:**
 ```json
@@ -111,51 +98,11 @@ Get comprehensive system status information including Raspberry Pi camera connec
   "latest_detection": {
     "detected": false,
     "confidence": 0.0,
-    "timestamp": 1693472347.123,
-    "image_path": null
+    "timestamp": 1693472347.123
   },
-  "timestamp": 1693472347.123,
-  "camera_source": "Raspberry Pi",
-  "pi_camera_url": "http://192.168.1.96:5000/video",
-  "pi_camera_status": "online"
+  "timestamp": 1693472347.123
 }
 ```
-
-### 6. Detection History
-**GET /detections**
-
-Get list of all saved detection images with metadata.
-
-**Response:**
-```json
-{
-  "total_detections": 5,
-  "detections": [
-    {
-      "timestamp": "2025-08-31T14:35:27.123456",
-      "confidence": 0.95,
-      "filename": "monkey_detected_20250831_143527.jpg",
-      "filepath": "detections/monkey_detected_20250831_143527.jpg"
-    }
-  ]
-}
-```
-
-### 7. Get Detection Image
-**GET /detection-image/{filename}**
-
-Serve a specific detection image by filename.
-
-**Response:** JPEG image file
-
-**Example:** `GET /detection-image/monkey_detected_20250831_143527.jpg`
-
-### 8. Latest Detection Image
-**GET /latest-detection-image**
-
-Get the most recent detection image.
-
-**Response:** JPEG image file or error if no detections available
 
 ## React Native Integration
 
@@ -181,10 +128,7 @@ import {
   TouchableOpacity,
   Alert,
   StyleSheet,
-  Dimensions,
-  Image,
-  ScrollView,
-  FlatList
+  Dimensions
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 
@@ -193,9 +137,6 @@ const MonkeyDetectorApp = () => {
   const [webcamActive, setWebcamActive] = useState(false);
   const [detectionData, setDetectionData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [detectionHistory, setDetectionHistory] = useState([]);
-  const [showHistory, setShowHistory] = useState(false);
-  const [videoMode, setVideoMode] = useState('detection'); // 'detection' or 'raw'
   
   // Replace with your server's IP address
   const SERVER_URL = 'http://192.168.1.100:5050';
@@ -289,11 +230,6 @@ const MonkeyDetectorApp = () => {
         const response = await fetch(`${SERVER_URL}/detection`);
         const data = await response.json();
         setDetectionData(data);
-        
-        // If new detection, refresh history
-        if (data.detected && data.image_path) {
-          fetchDetectionHistory();
-        }
       } catch (error) {
         console.error('Detection fetch failed:', error);
       }
@@ -302,41 +238,10 @@ const MonkeyDetectorApp = () => {
     return () => clearInterval(interval);
   }, [webcamActive]);
   
-  // Fetch detection history
-  const fetchDetectionHistory = async () => {
-    try {
-      const response = await fetch(`${SERVER_URL}/detections`);
-      const data = await response.json();
-      setDetectionHistory(data.detections || []);
-    } catch (error) {
-      console.error('History fetch failed:', error);
-    }
-  };
-  
   // Check connection on mount
   useEffect(() => {
     checkConnection();
-    fetchDetectionHistory();
   }, []);
-  
-  // Render detection history item
-  const renderDetectionItem = ({ item }) => (
-    <View style={styles.historyItem}>
-      <Image 
-        source={{ uri: `${SERVER_URL}/detection-image/${item.filename}` }}
-        style={styles.historyImage}
-        resizeMode="cover"
-      />
-      <View style={styles.historyInfo}>
-        <Text style={styles.historyText}>
-          Confidence: {(item.confidence * 100).toFixed(1)}%
-        </Text>
-        <Text style={styles.historyText}>
-          {new Date(item.timestamp).toLocaleString()}
-        </Text>
-      </View>
-    </View>
-  );
   
   return (
     <View style={styles.container}>
@@ -362,13 +267,6 @@ const MonkeyDetectorApp = () => {
               '✅ No monkeys detected'
             }
           </Text>
-          {detectionData.detected && detectionData.image_path && (
-            <Image 
-              source={{ uri: `${SERVER_URL}/detection-image/${detectionData.image_path}` }}
-              style={styles.detectionImage}
-              resizeMode="contain"
-            />
-          )}
         </View>
       )}
       
@@ -390,56 +288,14 @@ const MonkeyDetectorApp = () => {
             {loading ? 'Loading...' : webcamActive ? 'Stop Webcam' : 'Start Webcam'}
           </Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.button, styles.historyButton]} 
-          onPress={() => {
-            setShowHistory(!showHistory);
-            if (!showHistory) fetchDetectionHistory();
-          }}
-        >
-          <Text style={styles.buttonText}>
-            {showHistory ? 'Hide History' : `Show History (${detectionHistory.length})`}
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.button, styles.videoModeButton]} 
-          onPress={() => setVideoMode(videoMode === 'detection' ? 'raw' : 'detection')}
-          disabled={!webcamActive}
-        >
-          <Text style={styles.buttonText}>
-            Video: {videoMode === 'detection' ? 'AI Detection' : 'Raw Feed'}
-          </Text>
-        </TouchableOpacity>
       </View>
-      
-      {/* Detection History */}
-      {showHistory && (
-        <View style={styles.historyContainer}>
-          <Text style={styles.historyTitle}>Detection History:</Text>
-          {detectionHistory.length > 0 ? (
-            <FlatList
-              data={detectionHistory.slice().reverse()} // Show newest first
-              renderItem={renderDetectionItem}
-              keyExtractor={(item, index) => index.toString()}
-              style={styles.historyList}
-              showsVerticalScrollIndicator={false}
-            />
-          ) : (
-            <Text style={styles.noHistoryText}>No detections saved yet</Text>
-          )}
-        </View>
-      )}
       
       {/* Video Stream */}
       {isConnected && webcamActive && (
         <View style={styles.videoContainer}>
-          <Text style={styles.videoTitle}>
-            Live Feed: {videoMode === 'detection' ? 'AI Detection (Raspberry Pi)' : 'Raw Feed (Raspberry Pi)'}
-          </Text>
+          <Text style={styles.videoTitle}>Live Feed:</Text>
           <WebView
-            source={{ uri: `${SERVER_URL}/${videoMode === 'detection' ? 'video' : 'pi-video'}` }}
+            source={{ uri: `${SERVER_URL}/video` }}
             style={styles.webview}
             javaScriptEnabled={true}
             domStorageEnabled={true}
@@ -494,61 +350,6 @@ const styles = StyleSheet.create({
   detectionText: {
     fontSize: 14,
     fontWeight: '600',
-  },
-  detectionImage: {
-    width: '100%',
-    height: 200,
-    marginTop: 10,
-    borderRadius: 5,
-  },
-  historyButton: {
-    backgroundColor: '#FF9500',
-  },
-  videoModeButton: {
-    backgroundColor: '#5856D6',
-  },
-  historyContainer: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 20,
-    maxHeight: 300,
-  },
-  historyTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  historyList: {
-    flex: 1,
-  },
-  historyItem: {
-    flexDirection: 'row',
-    backgroundColor: '#f8f8f8',
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 10,
-  },
-  historyImage: {
-    width: 80,
-    height: 60,
-    borderRadius: 5,
-    marginRight: 10,
-  },
-  historyInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  historyText: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 2,
-  },
-  noHistoryText: {
-    textAlign: 'center',
-    color: '#666',
-    fontStyle: 'italic',
   },
   buttonContainer: {
     marginBottom: 20,
@@ -646,55 +447,28 @@ export default SimpleVideoStream;
 
 ### Network Requirements
 
-- **Same Network:** Both server, Raspberry Pi, and React Native device must be on the same WiFi network
-- **Firewall:** Ensure port 5050 is not blocked on the Flask server
-- **Raspberry Pi:** Ensure the Pi camera service is running on `http://192.168.1.96:5000/video`
+- **Same Network:** Both server and React Native device must be on the same WiFi network
+- **Firewall:** Ensure port 5050 is not blocked
 - **IP Address:** Use the actual IP address of the server, not `localhost` or `127.0.0.1`
-
-### Raspberry Pi Setup
-
-Make sure your Raspberry Pi is configured properly:
-
-1. **Camera Service Running:**
-   ```bash
-   # On Raspberry Pi, check if camera service is running
-   curl http://localhost:5000/video
-   ```
-
-2. **Network Accessibility:**
-   ```bash
-   # From Flask server machine, test Pi connectivity
-   curl http://192.168.1.96:5000/video
-   ```
-
-3. **Update Pi IP:** If your Raspberry Pi has a different IP, update `PI_CAMERA_URL` in `app.py`
 
 ### Troubleshooting
 
 #### Common Issues:
 
 1. **Connection Refused:**
-   - Check if Flask server is running
+   - Check if server is running
    - Verify IP address and port
    - Check firewall settings
 
 2. **Video Not Loading:**
-   - Ensure camera is started via `/webcam` endpoint
-   - Check if Raspberry Pi camera is accessible
-   - Try `/pi-video` endpoint for raw feed
-   - Verify Pi camera service is running
+   - Ensure webcam is started via `/webcam` endpoint
+   - Check if camera is available on server
+   - Try refreshing the WebView
 
 3. **Detection Not Working:**
    - Verify YOLO model (`best.pt`) is present
    - Check console logs for errors
    - Ensure sufficient lighting for camera
-   - Try raw video first to isolate detection issues
-
-4. **Raspberry Pi Camera Issues:**
-   - Check Pi camera service: `curl http://192.168.1.96:5000/video`
-   - Verify network connectivity between Flask server and Pi
-   - Check Pi camera hardware and drivers
-   - System will fallback to local webcam if Pi camera fails
 
 #### Debug Commands:
 
@@ -702,22 +476,13 @@ Make sure your Raspberry Pi is configured properly:
 # Test server connection
 curl http://YOUR_SERVER_IP:5050/
 
-# Test camera start
+# Test webcam start
 curl -X POST http://YOUR_SERVER_IP:5050/webcam \
   -H "Content-Type: application/json" \
   -d '{"action": "start"}'
 
 # Test detection status
 curl http://YOUR_SERVER_IP:5050/detection
-
-# Test system status (includes Pi camera connectivity)
-curl http://YOUR_SERVER_IP:5050/status
-
-# Test Raspberry Pi direct connection
-curl http://192.168.1.96:5000/video
-
-# Test raw Pi video stream through Flask
-curl http://YOUR_SERVER_IP:5050/pi-video
 ```
 
 ## Technical Notes

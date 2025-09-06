@@ -1,0 +1,63 @@
+def vector_function(a, b):
+    # Dot product: a · b = Σ (a[i] * b[i])
+    f = 0
+    for i in range(len(a)):
+        f += a[i] * b[i]
+    return f
+
+
+def gradient_descent(X, Y):
+    # Initialize theta (parameters) to zero
+    theta = [0] * len(X[0])  
+    steps = 10  # keep small to see prints clearly
+    learning_rate = 0.02
+
+    print("Initial theta:", theta)
+    print("-" * 50)
+
+    for step in range(steps):
+        loss = 0
+        change_loss = [0] * len(theta)
+
+        print(f"\nStep {step+1}:")
+        print("------------")
+
+        for i in range(len(X)):
+            # Prediction = θ · x
+            guess = vector_function(theta, X[i])
+
+            # Error = y - prediction
+            error = Y[i] - guess
+
+            # Squared error adds to loss
+            loss += error ** 2
+
+            print(f"Data point {i+1}: X={X[i]}, Y={Y[i]}")
+            print(f"Prediction = θ · X = {guess}")
+            print(f"Error = Y - Prediction = {error}")
+            print(f"Squared Error contributes = {error**2}")
+
+            # Gradient part: ∂Loss/∂θj = -2 * Σ(error * xj)
+            for j in range(len(theta)):
+                change_loss[j] += error * X[i][j]
+                print("I am i, j and change_loss [j]", i, j, change_loss[j], error)
+        # Apply gradient update rule:
+        # θj := θj + η * Σ(error * xj)
+        print("\nGradients accumulated (Σ(error * xj)):", change_loss)
+
+        for j in range(len(theta)):
+            theta[j] += learning_rate * change_loss[j]
+
+        print("Updated theta:", theta)
+        print("Total Loss this step (Σ error²):", loss)
+        print("-" * 50)
+
+    return theta
+
+
+# Example dataset
+X = [[1, 1], [1, 2], [1, 3], [1, 4]]
+Y = [3, 5, 7, 9]
+
+theta = gradient_descent(X, Y)
+print("\nFinal learned theta:", theta)
